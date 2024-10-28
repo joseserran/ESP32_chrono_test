@@ -1,4 +1,9 @@
 #include <LedControlMS.h>
+#include <WiFi.h>
+#include <WebServer.h>
+
+// Crear una instancia del servidor en el puerto 80
+WebServer server(80);
 
 // Configuración para 4 matrices controladas por MAX7219
 // Pin DataIn, Clock y Load
@@ -11,10 +16,26 @@ int minutos = 0;
 int intervalo = 100; // 100 ms para las décimas de segundo
 
 void setup() {
-   pinMode(8, OUTPUT);
-    // Inicializar la comunicación por puerto serie
+  pinMode(8, OUTPUT);
   Serial.begin(9600);
-  Serial.println("Connect.");
+
+  // Configurar el ESP32 como un punto de acceso
+  const char* ssid_ap = "ESP32_Access_Point";
+  const char* password_ap = "12345678"; // Contraseña de la red Wi-Fi
+
+  WiFi.softAP(ssid_ap, password_ap);
+  Serial.println("Punto de acceso iniciado.");
+  Serial.print("Dirección IP: ");
+  Serial.println(WiFi.softAPIP());
+
+  // Configurar la página principal del servidor web
+  server.on("/", []() {
+    server.send(200, "text/html", "<h1>Hola Mundo</h1>");
+  });
+
+  // Iniciar el servidor
+  server.begin();
+  Serial.println("Servidor web iniciado.");
 
   // Inicialización de las 4 matrices (índice 0-3)
   for (int i = 0; i < 4; i++) {
@@ -22,12 +43,13 @@ void setup() {
     lc.setIntensity(i, 8); // Brillo medio (0-15)
     lc.clearDisplay(i);     // Limpiar matriz
   }
-
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
+  // Llamar al servidor para manejar las peticiones de los clientes
+  server.handleClient();
 
+  unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= intervalo) {
     previousMillis = currentMillis;
     
